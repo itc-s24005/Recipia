@@ -3,7 +3,7 @@ import { Suspense } from 'react'
 import { connection } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import LogoutButton from '@/components/logout-button'
+import HomePageContent from '@/components/home-page-content'
 
 async function AuthenticatedHome() {
   await connection()
@@ -20,14 +20,12 @@ async function AuthenticatedHome() {
   }
 
   return (
-    <main style={{ padding: '40px' }}>
-      <h1>Recipia</h1>
-      <p>ログインに成功しました！</p>
-      <p>
-        ようこそ、{user.user_metadata.full_name ?? user.email} さん
-      </p>
-      <LogoutButton />
-    </main>
+    <HomePageContent
+      userName={
+        user.user_metadata.full_name ?? user.email ?? 'ユーザー'
+      }
+      userId={user.id}
+    />
   )
 }
 
