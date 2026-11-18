@@ -173,7 +173,10 @@ export default async function RecipeDetailContent({
                 recipeId={recipe.id}
                 recipeUserId={recipe.user_id}
               />
-              <FavoriteButton recipeId={recipe.id} />
+              <FavoriteButton
+                recipeId={recipe.id}
+                recipeUserId={recipe.user_id}
+              />
             </div>
 
           </div>
