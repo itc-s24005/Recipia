@@ -1,6 +1,6 @@
 
 import { notFound } from "next/navigation";
-import Link from "next/link";
+import UserProfileLink from "@/components/UserProfileLink";
 import { createClient } from "@/lib/supabase/server";
 
 type RecipeRow = {
@@ -167,7 +167,10 @@ export default async function RecipeDetailContent({
 
           {profile && (
             <div>
-              <Link href={`/user/${profile.id}`} className="mt-6 flex items-center gap-3 border-y border-gray-100 py-4">
+              <UserProfileLink
+                userId={profile.id}
+                className="mt-6 flex items-center gap-3 border-y border-gray-100 py-4"
+              >
                 <div className="h-11 w-11 overflow-hidden rounded-full bg-gray-100">
                   {profile.avatar_url ? (
                     <img
@@ -187,7 +190,7 @@ export default async function RecipeDetailContent({
                     {profile.name}
                   </p>
                 </div>
-              </Link>
+              </UserProfileLink>
             </div>
           )}
 
