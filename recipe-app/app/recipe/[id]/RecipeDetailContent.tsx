@@ -225,7 +225,10 @@ const reviewProfileMap = new Map(
 
           {/* いいね・お気に入り */}
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <LikeButton recipeId={recipe.id} />
+              <LikeButton
+                recipeId={recipe.id}
+                recipeUserId={recipe.user_id}
+              />
               <FavoriteButton recipeId={recipe.id} />
             </div>
 

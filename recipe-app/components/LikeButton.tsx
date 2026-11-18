@@ -6,9 +6,13 @@ import { createClient } from '@/lib/supabase/client'
 
 type Props = {
   recipeId: number
+  recipeUserId: string
 }
 
-export default function LikeButton({ recipeId }: Props) {
+export default function LikeButton({
+  recipeId,
+  recipeUserId,
+}: Props) {
   const [userId, setUserId] = useState<string | null>(null)
   const [isLiked, setIsLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
@@ -70,6 +74,11 @@ export default function LikeButton({ recipeId }: Props) {
 
   // いいね・いいね解除
   const handleLike = async () => {
+    // 自分のレシピにはいいねできない
+    if (userId === recipeUserId) {
+        alert('自分が投稿したレシピにはいいねできません。')
+    return
+    }
     if (!userId) {
       alert('いいねするにはログインしてください。')
       return
@@ -122,9 +131,14 @@ return (
     <button
     type="button"
     onClick={handleLike}
-    disabled={loading}
+    disabled={loading || processing || userId === recipeUserId}
     aria-label={isLiked ? 'いいねを解除' : 'いいねする'}
-    className="flex h-12 w-12 items-center justify-center rounded-full shadow-md bg-white transition hover:scale-105 disabled:opacity-50"
+    className={`flex h-12 w-12 items-center justify-center rounded-full shadow-md bg-white transition
+        ${
+            userId === recipeUserId
+            ? 'cursor-not-allowed opacity-50'
+            : 'hover:scale-105'
+        }`}
     >
         <svg
             viewBox="0 0 24 24"
