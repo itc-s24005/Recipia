@@ -363,7 +363,10 @@ const reviewProfileMap = new Map(
 
     {/* レビューを書くボタン */}
     <div className="mx-auto mt-6 max-w-3xl text-center">
-      <ReviewButton recipeId={recipe.id} />
+      <ReviewButton
+      recipeId={recipe.id}
+      recipeUserId={recipe.user_id}
+      />
     </div>
 
     {/* レビュー一覧 */}

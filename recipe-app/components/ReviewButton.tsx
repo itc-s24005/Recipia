@@ -7,9 +7,13 @@ import { createClient } from '@/lib/supabase/client'
 
 type Props = {
   recipeId: number
+  recipeUserId: string
 }
 
-export default function ReviewButton({ recipeId }: Props) {
+export default function ReviewButton({
+  recipeId,
+  recipeUserId,
+}: Props) {
   const supabase = createClient()
   const router = useRouter()
 
@@ -69,6 +73,11 @@ export default function ReviewButton({ recipeId }: Props) {
         alert('レビューを投稿するにはログインしてください。')
         return
       }
+      // 自分が投稿したレシピにはレビューできない
+      if (user.id === recipeUserId) {
+        alert('自分が投稿したレシピにはレビューできません。')
+        return
+    }
 
       // すでにレビューを投稿しているか確認
 const { data: existingReview, error: checkError } = await supabase
