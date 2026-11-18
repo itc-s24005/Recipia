@@ -201,7 +201,6 @@ export default async function RecipeDetailContent({
                   <p className="font-semibold text-gray-800">
                     {profile.name}
                   </p>
-                </div>
               </UserProfileLink>
               {/* フォローボタン */}
               <FollowButton targetUserId={profile.id} />
