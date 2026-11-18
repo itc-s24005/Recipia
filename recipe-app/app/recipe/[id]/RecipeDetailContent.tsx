@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import LikeButton from '@/components/LikeButton'
 import FollowButton from '@/components/FollowButton'
 import FavoriteButton from '@/components/FavoriteButton'
+import ReviewButton from '@/components/ReviewButton'
 
 
 type RecipeRow = {
@@ -45,6 +46,20 @@ type AllergenRow = {
   id: number;
   name: string;
 };
+
+type ReviewRow = {
+  user_id: string
+  comment: string
+  image_url: string | null
+  created_at: string
+}
+
+type ReviewProfileRow = {
+  id: string
+  name: string
+  avatar_url: string | null
+}
+
 
 export default async function RecipeDetailContent({
   id,
@@ -142,6 +157,47 @@ export default async function RecipeDetailContent({
       (item) => item.name
     );
   }
+  // レビュー一覧を取得（新しい順）
+const { data: reviewData, error: reviewError } = await supabase
+  .from('reviews')
+  .select('user_id, comment, image_url, created_at')
+  .eq('recipe_id', recipeId)
+  .order('created_at', { ascending: false })
+
+if (reviewError) {
+  console.error(reviewError)
+  throw new Error('レビューの取得に失敗しました。')
+}
+
+const reviews = (reviewData ?? []) as ReviewRow[]
+
+// レビュー投稿者のIDを取得
+const reviewerIds = [
+  ...new Set(reviews.map((review) => review.user_id)),
+]
+
+// 投稿者のプロフィールを取得
+let reviewProfiles: ReviewProfileRow[] = []
+
+if (reviewerIds.length > 0) {
+  const { data: reviewProfileData, error: reviewProfileError } =
+    await supabase
+      .from('profiles')
+      .select('id, name, avatar_url')
+      .in('id', reviewerIds)
+
+  if (reviewProfileError) {
+    console.error(reviewProfileError)
+    throw new Error('レビュー投稿者の取得に失敗しました。')
+  }
+
+  reviewProfiles = (reviewProfileData ?? []) as ReviewProfileRow[]
+}
+
+// ユーザーIDからプロフィールを探せるようにする
+const reviewProfileMap = new Map(
+  reviewProfiles.map((profile) => [profile.id, profile])
+)
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 pt-26 pb-10">
@@ -304,6 +360,79 @@ export default async function RecipeDetailContent({
 
         </div>
       </article>
-    </main>
+
+    {/* レビューを書くボタン */}
+    <div className="mx-auto mt-6 max-w-3xl text-center">
+      <ReviewButton recipeId={recipe.id} />
+    </div>
+
+    {/* レビュー一覧 */}
+    <section className="mx-auto mt-10 max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+      <h2 className="border-b-2 border-green-500 pb-3 text-xl font-bold text-gray-800">
+        レビュー（{reviews.length}件）
+      </h2>
+
+      {reviews.length > 0 ? (
+        <div className="divide-y divide-gray-100">
+          {reviews.map((review) => {
+            const reviewer = reviewProfileMap.get(review.user_id)
+
+            return (
+              <div
+                key={`${review.user_id}-${review.created_at}`}
+                className="py-6"
+              >
+                {/* 投稿者情報 */}
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gray-100">
+                    {reviewer?.avatar_url ? (
+                      <img
+                        src={reviewer.avatar_url}
+                        alt={reviewer.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center font-bold text-gray-400">
+                        {reviewer?.name?.charAt(0) ?? '?'}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="font-semibold text-gray-800">
+                      {reviewer?.name ?? 'ユーザー'}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {new Date(review.created_at).toLocaleDateString('ja-JP')}
+                    </p>
+                  </div>
+                </div>
+
+                {/* レビュー本文 */}
+                <p className="mt-4 whitespace-pre-wrap break-words leading-7 text-gray-700">
+                  {review.comment}
+                </p>
+
+                {/* レビュー写真 */}
+                {review.image_url && (
+                  <div className="mt-4">
+                    <img
+                      src={review.image_url}
+                      alt="レビュー投稿写真"
+                      className="max-h-80 w-auto max-w-full rounded-lg object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <p className="py-10 text-center text-gray-400">
+          まだレビューはありません。最初のレビューを書いてみましょう
+        </p>
+      )}
+    </section>
+  </main>
   );
 }
