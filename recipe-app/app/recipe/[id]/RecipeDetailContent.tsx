@@ -2,6 +2,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import LikeButton from '@/components/LikeButton'
+import FollowButton from '@/components/FollowButton'
+import FavoriteButton from '@/components/FavoriteButton'
+
 
 type RecipeRow = {
   id: number;
@@ -140,7 +144,7 @@ export default async function RecipeDetailContent({
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-10">
+    <main className="min-h-screen bg-gray-50 px-4 pt-26 pb-10">
       <article className="mx-auto max-w-3xl overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="aspect-[16/9] bg-gray-100">
           {recipe.image_url ? (
@@ -157,39 +161,53 @@ export default async function RecipeDetailContent({
         </div>
 
         <div className="p-6 sm:p-8">
-          <h1 className="text-2xl font-bold leading-relaxed text-gray-800 sm:text-3xl">
-            {recipe.title}
-          </h1>
+            {/* タイトルといいね・お気に入り */}
+            <div className="flex items-center justify-between gap-3">
+              <h1 className="text-2xl font-bold leading-relaxed text-gray-800 sm:text-3xl">
+                {recipe.title}
+              </h1>
+
+          {/* いいね・お気に入り */}
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <LikeButton recipeId={recipe.id} />
+              <FavoriteButton recipeId={recipe.id} />
+            </div>
+
+          </div>
 
           <p className="mt-4 whitespace-pre-wrap break-words leading-7 text-gray-600">
             {recipe.description}
           </p>
 
           {profile && (
-            <div>
-              <Link href={`/user/${profile.id}`} className="mt-6 flex items-center gap-3 border-y border-gray-100 py-4">
+            <div className="mt-6 flex items-center justify-between border-y border-gray-100 py-4">
+              {/* 投稿者情報 */}
+              <Link
+              href={`/user/${profile.id}`}
+              className="flex items-center gap-3"
+              >
                 <div className="h-11 w-11 overflow-hidden rounded-full bg-gray-100">
                   {profile.avatar_url ? (
                     <img
-                      src={profile.avatar_url}
-                      alt={profile.name}
-                      className="h-full w-full object-cover"
+                    src={profile.avatar_url}
+                    alt={profile.name}
+                    className="h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center font-bold text-gray-400">
-                      {profile.name.charAt(0)}
+                  <div className="flex h-full w-full items-center justify-center font-bold text-gray-400">
+                    {profile.name.charAt(0)}
                     </div>
                   )}
-                </div>
-
-                <div>
+                  </div>
                   <p className="font-semibold text-gray-800">
                     {profile.name}
                   </p>
-                </div>
               </Link>
-            </div>
-          )}
+              
+              {/* フォローボタン */}
+              <FollowButton targetUserId={profile.id} />
+              </div>
+            )}
 
           <div className="mt-6 flex flex-wrap gap-6 text-sm text-gray-600">
             {recipe.cooking_time !== null && (
