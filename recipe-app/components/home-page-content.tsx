@@ -5,10 +5,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
-type Allergen = {
-  id: number
-  name: string
-}
+
 
 type Recipe = {
   id: number
@@ -29,10 +26,6 @@ type Props = {
 }
 
 export default function HomePageContent({ userName, userId }: Props) {
-  const [allergens, setAllergens] = useState<Allergen[]>([])
-  const [selectedAllergens, setSelectedAllergens] = useState<number[]>([])
-  const [isAllergyOpen, setIsAllergyOpen] = useState(true)
-  const [keyword, setKeyword] = useState('')
   const [followingIds, setFollowingIds] = useState<string[]>([])
   const [isFollowingLoading, setIsFollowingLoading] = useState(true)
   const [recipes, setRecipes] = useState<Recipe[]>([])
@@ -41,26 +34,6 @@ export default function HomePageContent({ userName, userId }: Props) {
 
   const DISPLAY_COUNT = 6
 
-  // Supabaseからアレルギー情報を取得
-  useEffect(() => {
-    const fetchAllergens = async () => {
-      const supabase = createClient()
-
-      const { data, error } = await supabase
-        .from('allergens')
-        .select('id, name')
-        .order('id', { ascending: true })
-
-      if (error) {
-        console.error('アレルギー取得エラー:', error)
-        return
-      }
-
-      setAllergens(data ?? [])
-    }
-
-    fetchAllergens()
-  }, [])
 
   // Supabaseからフォロー中ユーザーを取得
   useEffect(() => {
@@ -139,159 +112,57 @@ useEffect(() => {
 }, [followingIds, isFollowingLoading])
 
 
+
 // 追加のレシピを取得
 const handleLoadMore = async () => {
   if (isRecipeLoading || !hasMore) return
 
   setIsRecipeLoading(true)
 
-  const supabase = createClient()
+  try {
+    const supabase = createClient()
 
-  const { data, error } = await supabase
-    .from('recipes')
-    .select(`
-      id,
-      user_id,
-      title,
-      description,
-      image_url,
-      created_at,
-      profiles!recipes_user_id_fkey (
-        name,
-        avatar_url
-      )
-    `)
-    .in('user_id', followingIds)
-    .order('created_at', { ascending: false })
-    .range(recipes.length,recipes.length + DISPLAY_COUNT)
+    const { data, error } = await supabase
+      .from('recipes')
+      .select(`
+        id,
+        user_id,
+        title,
+        description,
+        image_url,
+        created_at,
+        profiles!recipes_user_id_fkey (
+          name,
+          avatar_url
+        )
+      `)
+      .in('user_id', followingIds)
+      .order('created_at', { ascending: false })
+      .range(recipes.length, recipes.length + DISPLAY_COUNT)
 
-  if (error) {
-    console.error('追加レシピ取得エラー:', error)
+    if (error) {
+      console.error('追加レシピ取得エラー:', error)
+      return
+    }
+
+    const newRecipes = (data ?? []) as unknown as Recipe[]
+
+    setRecipes((current) => [
+      ...current,
+      ...newRecipes.slice(0, DISPLAY_COUNT),
+    ])
+
+    setHasMore(newRecipes.length > DISPLAY_COUNT)
+
+  } finally {
     setIsRecipeLoading(false)
-    return
   }
-
-  const newRecipes = (data ?? []) as unknown as Recipe[]
-
-  setRecipes((current) => [
-    ...current,
-    ...newRecipes.slice(0, DISPLAY_COUNT),
-])
-
-setHasMore(newRecipes.length > DISPLAY_COUNT)
-
 }
 
-
-  // アレルギー選択
-  const toggleAllergen = (allergenId: number) => {
-    setSelectedAllergens((current) =>
-      current.includes(allergenId)
-        ? current.filter((id) => id !== allergenId)
-        : [...current, allergenId]
-    )
-  }
-
-  // 検索処理
-  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-
-    // 検索処理はあとから実装
-    console.log({
-      keyword,
-      selectedAllergens,
-    })
-  }
-
   return (
-    <main className="min-h-screen bg-[#f8f8f5] text-gray-800">
-
-      {/* ヘッダー */}
-      <header className="bg-white px-6 py-5 shadow-sm">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4">
-
-          <Link
-            href="/"
-            className="text-3xl font-bold text-[#55a66b]"
-          >
-            Recipia
-          </Link>
-
-          <form
-            onSubmit={handleSearch}
-            className="flex min-w-[240px] flex-1"
-          >
-            <input
-              type="text"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              placeholder="入力してください"
-              className="w-full rounded-l-lg border border-gray-300 px-4 py-3 outline-none focus:border-[#55a66b]"
-            />
-
-            <button
-              type="submit"
-              className="rounded-r-lg bg-[#55a66b] px-5 text-white hover:bg-[#438c57]"
-            >
-              検索
-            </button>
-          </form>
-
-          <Link
-            href="/mypage"
-            title={`${userName}さんのマイページ`}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-[#e5f3e8] text-xl text-[#438c57]"
-          >
-            👤
-          </Link>
-        </div>
-      </header>
+    <main className="min-h-screen bg-[#f8f8f5] pt-36 text-gray-800">
 
       <div className="mx-auto max-w-6xl px-6 py-8">
-
-        {/* アレルギー指定欄 */}
-        <section className="mb-10 overflow-hidden rounded-xl bg-[#fff0df]">
-
-          <button
-            type="button"
-            onClick={() => setIsAllergyOpen(!isAllergyOpen)}
-            className="flex w-full items-center justify-between px-6 py-5 text-left font-bold"
-          >
-            <span className="text-lg">アレルギー指定欄</span>
-
-            <span className="text-xl">
-              {isAllergyOpen ? '▲' : '▼'}
-            </span>
-          </button>
-
-          {isAllergyOpen && (
-            <div className="grid grid-cols-2 gap-4 px-6 pb-6 sm:grid-cols-3 md:grid-cols-5">
-
-              {allergens.map((allergen) => (
-                <label
-                  key={allergen.id}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg bg-white px-3 py-3"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedAllergens.includes(allergen.id)}
-                    onChange={() => toggleAllergen(allergen.id)}
-                    className="h-4 w-4 accent-[#55a66b]"
-                  />
-
-                  <span>{allergen.name}</span>
-                </label>
-              ))}
-
-              {allergens.length === 0 && (
-                <p className="col-span-full text-sm text-gray-500">
-                  アレルギー情報を読み込んでいます...
-                </p>
-              )}
-
-            </div>
-          )}
-        </section>
 
 
 {/* フォロー中ユーザーの最新レシピ */}
