@@ -1,6 +1,6 @@
 
 import { notFound } from "next/navigation";
-import Link from "next/link";
+import UserProfileLink from "@/components/UserProfileLink";
 import { createClient } from "@/lib/supabase/server";
 import LikeButton from '@/components/LikeButton'
 import FollowButton from '@/components/FollowButton'
@@ -180,11 +180,10 @@ export default async function RecipeDetailContent({
           </p>
 
           {profile && (
-            <div className="mt-6 flex items-center justify-between border-y border-gray-100 py-4">
-              {/* 投稿者情報 */}
-              <Link
-              href={`/user/${profile.id}`}
-              className="flex items-center gap-3"
+            <div>
+              <UserProfileLink
+                userId={profile.id}
+                className="mt-6 flex items-center gap-3 border-y border-gray-100 py-4"
               >
                 <div className="h-11 w-11 overflow-hidden rounded-full bg-gray-100">
                   {profile.avatar_url ? (
@@ -202,8 +201,8 @@ export default async function RecipeDetailContent({
                   <p className="font-semibold text-gray-800">
                     {profile.name}
                   </p>
-              </Link>
-              
+                </div>
+              </UserProfileLink>
               {/* フォローボタン */}
               <FollowButton targetUserId={profile.id} />
               </div>
