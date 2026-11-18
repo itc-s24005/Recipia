@@ -229,7 +229,10 @@ const reviewProfileMap = new Map(
                 recipeId={recipe.id}
                 recipeUserId={recipe.user_id}
               />
-              <FavoriteButton recipeId={recipe.id} />
+              <FavoriteButton
+                recipeId={recipe.id}
+                recipeUserId={recipe.user_id}
+              />
             </div>
 
           </div>

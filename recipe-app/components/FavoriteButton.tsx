@@ -6,9 +6,13 @@ import { createClient } from '@/lib/supabase/client'
 
 type Props = {
   recipeId: number
+  recipeUserId: string
 }
 
-export default function FavoriteButton({ recipeId }: Props) {
+export default function FavoriteButton({
+  recipeId,
+  recipeUserId,
+}: Props) {
   const [userId, setUserId] = useState<string | null>(null)
   const [isFavorite, setIsFavorite] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -56,14 +60,17 @@ export default function FavoriteButton({ recipeId }: Props) {
 
   // お気に入り登録・解除
   const handleFavorite = async () => {
-    if (!userId) {
-      alert('お気に入り登録にはログインしてください。')
-      return
-    }
+  if (!userId) {
+    alert('お気に入り登録にはログインしてください。')
+    return
+  }
 
-    if (processing) return
+  // 自分のレシピにはお気に入りできない
+  if (userId === recipeUserId) return
 
-    setProcessing(true)
+  if (processing) return
+
+  setProcessing(true)
 
     const supabase = createClient()
 
@@ -100,6 +107,15 @@ export default function FavoriteButton({ recipeId }: Props) {
     }
   }
 
+  // ログイン状態の確認中は表示しない
+if (loading) {
+  return null
+}
+
+// 自分のレシピなら表示しない
+if (userId === recipeUserId) {
+  return null
+}
   
     return (
     <button
