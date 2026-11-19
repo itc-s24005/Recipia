@@ -48,7 +48,7 @@ export default function SearchPageContent() {
 
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [displayCount, setDisplayCount] = useState(DISPLAY_COUNT)
-  const [sortType, setSortType] = useState<'newest' | 'popular'>('newest')
+  const [sortType, setSortType] = useState<'newest' | 'popular'>('popular')
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
 
@@ -90,23 +90,34 @@ export default function SearchPageContent() {
       // キーワードが入力されている場合
       if (trimmedKeyword) {
         const escapedKeyword = trimmedKeyword.replace(
-          /[%_,]/g,
+          /[\\%_]/g,
           '\\$&'
         )
         const pattern = `%${escapedKeyword}%`
 
-        // レシピ名・説明文を検索
-        const { data: recipeData, error: recipeError } =
-          await supabase
-            .from('recipes')
-            .select('id')
-            .or(
-              `title.ilike.${pattern},description.ilike.${pattern}`
-            )
+        // レシピ名を検索
+        const { data: titleData, error: titleError } =
+        await supabase
+        .from('recipes')
+        .select('id')
+        .ilike('title', pattern)
 
-        if (recipeError) throw recipeError
+        if (titleError) throw titleError
 
-        recipeData?.forEach((recipe) => {
+        titleData?.forEach((recipe) => {
+        recipeIds.add(recipe.id)
+        })
+
+        // 説明文を検索
+        const { data: descriptionData, error: descriptionError } =
+        await supabase
+        .from('recipes')
+        .select('id')
+        .ilike('description', pattern)
+
+        if (descriptionError) throw descriptionError
+
+        descriptionData?.forEach((recipe) => {
           recipeIds.add(recipe.id)
         })
 
@@ -230,10 +241,30 @@ if (searchAllergens.length > 0) {
 
       setRecipes(formattedRecipes)
       setSearched(true)
-    } catch (error) {
-      console.error('レシピ検索エラー:', error)
-      setRecipes([])
-      setSearched(true)
+    } catch (error: unknown) {
+  console.error('レシピ検索エラー:', error)
+
+  if (error instanceof Error) {
+    console.error('エラーメッセージ:', error.message)
+    console.error('スタック:', error.stack)
+  } else {
+    const err = error as {
+      message?: unknown
+      details?: unknown
+      hint?: unknown
+      code?: unknown
+    }
+
+    console.error('エラー詳細:', {
+      message: err?.message,
+      details: err?.details,
+      hint: err?.hint,
+      code: err?.code,
+    })
+  }
+
+  setRecipes([])
+  setSearched(true)
     } finally {
       setLoading(false)
     }
