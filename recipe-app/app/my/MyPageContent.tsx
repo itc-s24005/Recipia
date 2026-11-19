@@ -57,6 +57,7 @@ const favoriteRecipeIds = (favoriteData ?? []).map(
   (item) => item.recipe_id
 );
 
+
 // お気に入りレシピを取得
 let favoriteRecipes: FavoriteRecipe[] = [];
 
@@ -73,8 +74,63 @@ if (favoriteRecipeIds.length > 0) {
     throw new Error("お気に入りレシピの取得に失敗しました。");
   }
 
-  favoriteRecipes = (favoriteRecipeData ?? []) as FavoriteRecipe[];
+  // お気に入りレシピのアレルギー情報を取得
+  const { data: favoriteRelationData, error: favoriteRelationError } =
+    await supabase
+      .from("recipe_allergens")
+      .select("recipe_id, allergen_id")
+      .in("recipe_id", favoriteRecipeIds);
+
+  if (favoriteRelationError) {
+    console.error(favoriteRelationError);
+    throw new Error("お気に入りレシピのアレルギー情報の取得に失敗しました。");
+  }
+
+  const favoriteRelations =
+    (favoriteRelationData ?? []) as RecipeAllergenRow[];
+
+  // アレルギーIDを取得
+  const favoriteAllergenIds = [
+    ...new Set(
+      favoriteRelations.map((item) => item.allergen_id)
+    ),
+  ];
+
+  // アレルギー名を取得
+  let favoriteAllergenNames = new Map<number, string>();
+
+  if (favoriteAllergenIds.length > 0) {
+    const { data: favoriteAllergenData, error: favoriteAllergenError } =
+      await supabase
+        .from("allergens")
+        .select("id, name")
+        .in("id", favoriteAllergenIds);
+
+    if (favoriteAllergenError) {
+      console.error(favoriteAllergenError);
+      throw new Error("アレルギー食品の取得に失敗しました。");
+    }
+
+    const favoriteAllergenRows =
+      (favoriteAllergenData ?? []) as AllergenRow[];
+
+    favoriteAllergenNames = new Map(
+      favoriteAllergenRows.map((item) => [item.id, item.name])
+    );
+  }
+
+  // レシピごとにアレルギー名を設定
+  favoriteRecipes = (favoriteRecipeData ?? []).map((recipe) => ({
+    ...recipe,
+    allergens: favoriteRelations
+      .filter((relation) => relation.recipe_id === recipe.id)
+      .map((relation) =>
+        favoriteAllergenNames.get(relation.allergen_id)
+      )
+      .filter((name): name is string => Boolean(name)),
+  })) as FavoriteRecipe[];
 }
+
 
   // プロフィールを取得
   const { data: profile, error: profileError } = await supabase
