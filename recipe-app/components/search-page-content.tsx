@@ -404,7 +404,7 @@ if (searchAllergens.length > 0) {
                   </Link>
                 ))}
 
-              {/* もっと見る */}
+              {/* もっとみる */}
               {displayCount < sortedRecipes.length && (
                 <div className="py-6 text-center">
                   <button
@@ -414,9 +414,9 @@ if (searchAllergens.length > 0) {
                         (prev) => prev + DISPLAY_COUNT
                       )
                     }
-                    className="rounded-lg border border-[#55a66c] bg-white px-10 py-3 font-bold text-[#55a66c] hover:bg-[#eef7f0]"
+                    className="rounded-full border border-gray-300 px-8 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    もっと見る
+                    もっとみる
                   </button>
                 </div>
               )}
