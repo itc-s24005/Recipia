@@ -213,7 +213,7 @@ useEffect(() => {
 
 {/* マイページ */}
 <Link
-  href="/mypage"
+  href="/my"
   title={`${userName ?? 'ユーザー'}さんのマイページ`}
   className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#e5f3e8] text-xl text-[#438c57]"
 >
