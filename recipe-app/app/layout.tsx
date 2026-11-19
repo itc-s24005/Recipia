@@ -1,10 +1,8 @@
-
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Header from "@/components/Header";
 import { SearchProvider } from "@/components/search-context";
+import HeaderWrapper from "@/components/HeaderWrapper";
 import "./globals.css";
-import HeaderWrapper from '@/components/HeaderWrapper'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,7 +19,9 @@ export const metadata: Metadata = {
   description: "アレルギーに配慮したレシピ検索アプリ",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
       lang="ja"
