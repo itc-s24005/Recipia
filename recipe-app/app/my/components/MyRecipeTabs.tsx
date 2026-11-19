@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useState } from 'react'
@@ -10,6 +11,7 @@ export type FavoriteRecipe = {
   title: string
   image_url: string
   created_at: string
+  allergens: string[]
 }
 
 type Props = {
@@ -91,52 +93,78 @@ export default function MyRecipeTabs({
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {favoriteRecipes.slice(0, favoriteDisplayCount).map((recipe) => (
-                <Link
-                  key={recipe.id}
-                  href={`/recipe/${recipe.id}`}
-                  className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md"
-                >
-                  <div className="aspect-square bg-gray-100">
-                    {recipe.image_url ? (
-                      <img
-                        src={recipe.image_url}
-                        alt={recipe.title}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-sm text-gray-400">
-                        画像なし
+              {favoriteRecipes
+                .slice(0, favoriteDisplayCount)
+                .map((recipe) => (
+                  <Link
+                    key={recipe.id}
+                    href={`/recipe/${recipe.id}`}
+                    className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md"
+                  >
+                    <div className="aspect-square bg-gray-100">
+                      {recipe.image_url ? (
+                        <img
+                          src={recipe.image_url}
+                          alt={recipe.title}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-sm text-gray-400">
+                          画像なし
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-4">
+                      <h3 className="line-clamp-2 font-bold text-gray-800">
+                        {recipe.title}
+                      </h3>
+
+                      {/* 対応アレルギー食品 */}
+                      <div className="mt-3">
+                        <p className="mb-2 text-xs font-semibold text-gray-500">
+                          対応アレルギー食品
+                        </p>
+
+                        <div className="flex flex-wrap gap-2">
+                          {recipe.allergens.length > 0 ? (
+                            recipe.allergens.map((allergen) => (
+                              <span
+                                key={`${recipe.id}-${allergen}`}
+                                className="rounded-full bg-green-50 px-3 py-1 text-xs text-green-700"
+                              >
+                                {allergen}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-xs text-gray-400">
+                              登録なし
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    )}
-                  </div>
-
-                  <div className="p-4">
-                    <h3 className="line-clamp-2 font-bold text-gray-800">
-                      {recipe.title}
-                    </h3>
-                  </div>
-                </Link>
-              ))}
+                    </div>
+                  </Link>
+                ))}
             </div>
-        )}
+          )}
 
-        {/* もっと見るボタン */}
-        {favoriteDisplayCount < favoriteRecipes.length && (
-          <div className="py-6 text-center">
-            <button
-              type="button"
-              onClick={() =>
-                setFavoriteDisplayCount((prev) => prev + 6)
-              }
-              className="rounded-full border border-gray-300 px-8 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              もっとみる
-            </button>
-          </div>
-        )}
-      </>
-    )}
+          {/* もっと見るボタン */}
+          {favoriteDisplayCount < favoriteRecipes.length && (
+            <div className="py-6 text-center">
+              <button
+                type="button"
+                onClick={() =>
+                  setFavoriteDisplayCount((prev) => prev + 6)
+                }
+                className="rounded-full border border-gray-300 px-8 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-100"
+              >
+                もっとみる
+              </button>
+            </div>
+          )}
+        </>
+      )}
     </section>
   )
 }
