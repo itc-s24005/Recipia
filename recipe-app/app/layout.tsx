@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SearchProvider } from "@/components/search-context";
@@ -28,10 +29,12 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <SearchProvider>
+        <Suspense fallback={null}>
+          <SearchProvider>
           <HeaderWrapper />
           {children}
-        </SearchProvider>
+          </SearchProvider>
+          </Suspense>
       </body>
     </html>
   );
