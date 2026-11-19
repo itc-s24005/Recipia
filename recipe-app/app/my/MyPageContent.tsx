@@ -1,7 +1,9 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import UserRecipeList from "@/components/UserRecipeList";
+import MyRecipeTabs, {
+  type FavoriteRecipe,
+} from "./components/MyRecipeTabs";
 import type { RecipeCardData } from "@/components/RecipeCard";
 import MyPageActions from "./components/MyPageActions";
 import FollowingListModal from "./components/FollowingListModal";
@@ -38,6 +40,41 @@ export default async function MyPageContent() {
   }
 
   const userId = user.id;
+
+  // お気に入り登録したレシピIDを取得
+const { data: favoriteData, error: favoriteError } = await supabase
+  .from("favorites")
+  .select("recipe_id")
+  .eq("user_id", userId);
+
+if (favoriteError) {
+  console.error(favoriteError);
+  throw new Error("お気に入り情報の取得に失敗しました。");
+}
+
+// お気に入りレシピID一覧
+const favoriteRecipeIds = (favoriteData ?? []).map(
+  (item) => item.recipe_id
+);
+
+// お気に入りレシピを取得
+let favoriteRecipes: FavoriteRecipe[] = [];
+
+if (favoriteRecipeIds.length > 0) {
+  const { data: favoriteRecipeData, error: favoriteRecipeError } =
+    await supabase
+      .from("recipes")
+      .select("id, title, image_url, created_at")
+      .in("id", favoriteRecipeIds)
+      .order("created_at", { ascending: false });
+
+  if (favoriteRecipeError) {
+    console.error(favoriteRecipeError);
+    throw new Error("お気に入りレシピの取得に失敗しました。");
+  }
+
+  favoriteRecipes = (favoriteRecipeData ?? []) as FavoriteRecipe[];
+}
 
   // プロフィールを取得
   const { data: profile, error: profileError } = await supabase
@@ -220,24 +257,12 @@ export default async function MyPageContent() {
         </section>
 
         {/* 投稿レシピ */}
-        <section className="mt-10">
-          <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-800">
-              投稿したレシピ
-            </h2>
-
-            <span className="text-sm text-gray-500">
-              全 {recipeCount ?? 0} 件
-            </span>
-          </div>
-
-          <UserRecipeList
-            key={`my-${userId}`}
-            userId={userId}
-            initialRecipes={initialRecipes}
-            initialHasMore={hasMore}
-          />
-        </section>
+        <MyRecipeTabs
+        userId={userId}
+        initialRecipes={initialRecipes}
+        initialHasMore={hasMore}
+        favoriteRecipes={favoriteRecipes}
+        />
       </div>
     </main>
   );
