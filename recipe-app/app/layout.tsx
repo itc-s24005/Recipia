@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Header from "@/components/Header";
 import { SearchProvider } from "@/components/search-context";
 import "./globals.css";
+import HeaderWrapper from '@/components/HeaderWrapper'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,7 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <SearchProvider>
-          <Header />
+          <HeaderWrapper />
           {children}
         </SearchProvider>
       </body>
