@@ -235,7 +235,7 @@ const handleLoadMore = async () => {
             type="button"
             onClick={handleLoadMore}
             disabled={isRecipeLoading}
-            className="rounded-lg bg-[#e99a52] px-10 py-3 font-bold text-white shadow-sm transition hover:bg-[#d9873e] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-full border border-gray-300 px-8 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isRecipeLoading ? '読み込み中...' : 'もっとみる'}
           </button>
