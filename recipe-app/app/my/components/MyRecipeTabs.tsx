@@ -121,7 +121,7 @@ export default function MyRecipeTabs({
             </div>
         )}
 
-        {/* もっとみるボタン */}
+        {/* もっと見るボタン */}
         {favoriteDisplayCount < favoriteRecipes.length && (
           <div className="py-6 text-center">
             <button
