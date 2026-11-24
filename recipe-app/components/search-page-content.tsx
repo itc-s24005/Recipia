@@ -388,9 +388,31 @@ if (searchAllergens.length > 0) {
                       </p>
 
                       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
-                        <span>
-                          投稿者：{recipe.profiles?.name ?? '不明'}
-                        </span>
+                        <span className="flex items-center gap-2">
+                          {recipe.profiles?.avatar_url ? (
+                            <img
+                            src={recipe.profiles.avatar_url}
+                            alt="ユーザーアイコン"
+                            className="h-6 w-6 rounded-full object-cover"
+                            />
+                          ) : (
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200">
+                            <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            className="h-4 w-4 text-gray-500"
+                            >
+                              <path
+                              fillRule="evenodd"
+                              d="M12 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10ZM3 21a9 9 0 1 1 18 0H3Z"
+                              clipRule="evenodd"
+                              />
+                            </svg>
+                              </span>
+                            )}
+                          {recipe.profiles?.name ?? '不明'}
+                          </span>
 
                         <span>
                           ♥ {recipe.likeCount}

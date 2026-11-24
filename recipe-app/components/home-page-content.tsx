@@ -219,9 +219,34 @@ const handleLoadMore = async () => {
                 {recipe.title}
               </p>
 
-              <p className="mt-2 text-sm text-gray-500">
-                投稿者：{recipe.profiles?.name ?? 'ユーザー'}
-              </p>
+              {/* 投稿者アイコンとユーザー名 */}
+              <div className="mt-3 flex items-center gap-2">
+                {recipe.profiles?.avatar_url ? (
+                  <img
+                  src={recipe.profiles.avatar_url}
+                  alt="ユーザーアイコン"
+                  className="h-7 w-7 rounded-full object-cover"
+                  />
+                ) : (
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-200">
+                  <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="h-5 w-5 text-gray-500"
+                  >
+                    <path
+                    fillRule="evenodd"
+                    d="M12 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10ZM3 21a9 9 0 1 1 18 0H3Z"
+                    clipRule="evenodd"
+                    />
+                  </svg>
+                  </div>
+                )}
+                <span className="text-sm text-gray-500">
+                  {recipe.profiles?.name ?? 'ユーザー'}
+                </span>
+                </div>
             </div>
           </Link>
         ))}
