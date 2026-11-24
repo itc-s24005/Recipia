@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import UserRecipeList from "@/components/UserRecipeList";
 import type { RecipeCardData } from "@/components/RecipeCard";
+import FollowButton from '@/components/FollowButton'
 
 const PAGE_SIZE = 6;
 
@@ -157,6 +158,11 @@ export default async function UserPageContent({
               <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-gray-600">
                 {profile.bio || "プロフィールはまだ登録されていません。"}
               </p>
+
+              {/* フォローボタン */}
+              <div className="mt-4 flex justify-center sm:justify-start">
+                <FollowButton targetUserId={profile.id} />
+              </div>
 
               <div className="mt-5 flex justify-center gap-8 sm:justify-start">
                 <div className="text-center">
