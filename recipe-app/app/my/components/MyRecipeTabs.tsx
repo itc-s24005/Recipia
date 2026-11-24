@@ -74,6 +74,7 @@ export default function MyRecipeTabs({
             userId={userId}
             initialRecipes={initialRecipes}
             initialHasMore={initialHasMore}
+            manageRecipes={true}
           />
         </>
       )}
