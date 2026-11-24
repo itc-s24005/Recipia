@@ -269,20 +269,6 @@ const handleLoadMore = async () => {
     </>
   )}
 </section>
-
-
-        {/* レシピ作成 */}
-        <div className="mt-10 flex flex-wrap items-center justify-between gap-4">
-
-          <Link
-            href="/recipe/post"
-            className="rounded-lg bg-[#e99a52] px-8 py-3 font-bold text-white hover:bg-[#d9873e]"
-          >
-            ＋ レシピ作成
-          </Link>
-
-
-        </div>
       </div>
     </main>
   )

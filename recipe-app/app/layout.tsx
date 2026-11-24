@@ -1,8 +1,10 @@
+
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SearchProvider } from "@/components/search-context";
 import HeaderWrapper from "@/components/HeaderWrapper";
+import RecipePostButton from "@/components/RecipePostButton";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -22,7 +24,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{ children: React.ReactNode }>) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html
       lang="ja"
@@ -31,10 +35,14 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <Suspense fallback={null}>
           <SearchProvider>
-          <HeaderWrapper />
-          {children}
+            <HeaderWrapper />
+
+            {children}
+
+            {/* レシピ投稿ボタン */}
+            <RecipePostButton />
           </SearchProvider>
-          </Suspense>
+        </Suspense>
       </body>
     </html>
   );
