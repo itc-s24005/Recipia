@@ -73,6 +73,10 @@ export default async function RecipeDetailContent({
   }
 
   const supabase = await createClient();
+  // ログインユーザーを取得
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const { data: recipeData, error: recipeError } = await supabase
     .from("recipes")
@@ -366,9 +370,14 @@ const reviewProfileMap = new Map(
       </article>
 
     {/* レビューを書くボタン */}
-    <div className="mx-auto mt-6 max-w-3xl text-center">
-      <ReviewButton recipeId={recipe.id} />
-    </div>
+    {user && user.id !== recipe.user_id && (
+      <div className="mx-auto mt-6 max-w-3xl text-center">
+        <ReviewButton
+        recipeId={recipe.id}
+        recipeUserId={recipe.user_id}
+        />
+      </div>
+    )}
 
     {/* レビュー一覧 */}
     <section className="mx-auto mt-10 max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
