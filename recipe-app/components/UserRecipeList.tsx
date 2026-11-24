@@ -35,6 +35,7 @@ export default function UserRecipeList({
   const loadingRef = useRef(false);
   const nextFromRef = useRef(initialRecipes.length);
 
+  // レシピを追加取得する
   const loadMore = async () => {
     if (loadingRef.current || !hasMore) {
       return;
@@ -93,6 +94,7 @@ export default function UserRecipeList({
     }
   };
 
+  // レシピを削除する
   const deleteRecipe = async () => {
     if (!recipeToDelete || deleting) {
       return;
@@ -102,8 +104,10 @@ export default function UserRecipeList({
     setError("");
 
     try {
+      const deletedRecipeId = recipeToDelete.id;
+
       const response = await fetch(
-        `/api/recipes/${recipeToDelete.id}`,
+        `/api/recipes/${deletedRecipeId}`,
         {
           method: "DELETE",
         }
@@ -113,13 +117,14 @@ export default function UserRecipeList({
         throw new Error("削除に失敗しました。");
       }
 
-      setRecipes((current) =>
-        current.filter(
-          (recipe) => recipe.id !== recipeToDelete.id
-        )
+      // 削除したレシピを一覧から取り除く
+      const remainingRecipes = recipes.filter(
+        (recipe) => recipe.id !== deletedRecipeId
       );
 
-      // 削除した分、次回取得する開始位置も調整する
+      setRecipes(remainingRecipes);
+
+      // 削除した分、次回取得する開始位置を1つ戻す
       nextFromRef.current = Math.max(
         0,
         nextFromRef.current - 1
@@ -127,12 +132,92 @@ export default function UserRecipeList({
 
       setRecipeToDelete(null);
 
+      // 削除によって空いた枠に次のレシピを補充する
+      if (hasMore && !loadingRef.current) {
+        loadingRef.current = true;
+
+        try {
+          const from = nextFromRef.current;
+
+          const refillResponse = await fetch(
+            `/api/users/${userId}/recipes?from=${from}`,
+            {
+              cache: "no-store",
+            }
+          );
+
+          if (!refillResponse.ok) {
+            throw new Error("次のレシピの取得に失敗しました。");
+          }
+
+          const data: LoadMoreResponse =
+            await refillResponse.json();
+
+          if (
+            !Array.isArray(data.recipes) ||
+            typeof data.hasMore !== "boolean"
+          ) {
+            throw new Error("取得したデータの形式が正しくありません。");
+          }
+
+          // まだ表示されていないレシピを1件だけ取得する
+          const existingIds = new Set(
+            remainingRecipes.map((recipe) => recipe.id)
+          );
+
+          const nextRecipe = data.recipes.find(
+            (recipe) => !existingIds.has(recipe.id)
+          );
+
+          if (nextRecipe) {
+            setRecipes((current) => {
+              // 念のため重複を防止
+              if (
+                current.some(
+                  (recipe) => recipe.id === nextRecipe.id
+                )
+              ) {
+                return current;
+              }
+
+              return [...current, nextRecipe];
+            });
+
+            // 追加した1件分だけ取得位置を進める
+            nextFromRef.current += 1;
+          }
+
+          // 取得結果にまだ未表示のレシピがある場合も考慮
+          const remainingInResponse = data.recipes.some(
+            (recipe) =>
+              recipe.id !== nextRecipe?.id &&
+              !existingIds.has(recipe.id)
+          );
+
+          setHasMore(
+            remainingInResponse || data.hasMore
+          );
+        } catch (refillError) {
+          console.error(refillError);
+
+          // 補充に失敗しても削除自体は成功している
+          // 「もっと見る」から再取得できるようにする
+          setError(
+            "次のレシピを自動取得できませんでした。「もっと見る」から再度お試しください。"
+          );
+        } finally {
+          loadingRef.current = false;
+        }
+      }
+
       window.alert("レシピを削除しました。");
     } catch (err) {
       console.error(err);
+
       setError(
         "削除に失敗しました。もう一度お試しください。"
       );
+
       setRecipeToDelete(null);
     } finally {
       setDeleting(false);
@@ -244,4 +329,3 @@ export default function UserRecipeList({
     </div>
   );
 }
-
