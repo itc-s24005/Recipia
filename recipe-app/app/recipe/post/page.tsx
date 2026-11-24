@@ -85,7 +85,14 @@ export default function RecipePostPage() {
 
     setError("");
     setImage(file);
-    setPreviewUrl(URL.createObjectURL(file));
+
+    setPreviewUrl((current) => {
+      if (current) {
+        URL.revokeObjectURL(current);
+      }
+
+    return URL.createObjectURL(file);
+    });
   };
 
   // 材料の更新
@@ -316,6 +323,31 @@ export default function RecipePostPage() {
       }
 
       // 投稿成功
+      // 投稿成功後、入力内容をリセット
+      setImage(null);
+      setPreviewUrl("");
+      setTitle("");
+      setDescription("");
+      setCookingTime("");
+      setServings("");
+
+      setIngredients([{ name: "", amount: "" }]);
+      setSteps([{ instruction: "" }]);
+
+      setSelectedAllergenIds([]);
+      setError("");
+
+
+      // ファイル選択もリセット
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+
+      // loadingを解除
+      setLoading(false);
+
+
+      // レシピ詳細画面へ移動
       router.push(`/recipe/${recipeId}`);
       router.refresh();
     } catch (err) {
