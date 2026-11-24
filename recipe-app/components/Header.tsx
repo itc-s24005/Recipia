@@ -2,7 +2,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useSearchContext } from '@/components/search-context'
@@ -19,6 +19,9 @@ type Props = {
 
 export default function Header({ userName }: Props) {
   const router = useRouter()
+
+  const pathname = usePathname()
+  const [shouldRefreshMyPage, setShouldRefreshMyPage] = useState(false)
 
   const [allergens, setAllergens] = useState<Allergen[]>([])
   const [isAllergyOpen, setIsAllergyOpen] = useState(false)
@@ -212,9 +215,9 @@ useEffect(() => {
 
 
 {/* マイページ */}
-<Link
+<a
   href="/my"
-  title={`${userName ?? 'ユーザー'}さんのマイページ`}
+  title={`${userName ?? "ユーザー"}さんのマイページ`}
   className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#e5f3e8] text-xl text-[#438c57]"
 >
   {avatarUrl ? (
@@ -226,7 +229,7 @@ useEffect(() => {
   ) : (
     '👤'
   )}
-</Link>
+</a>
         
 
       </div>
