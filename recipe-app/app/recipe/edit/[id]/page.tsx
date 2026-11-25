@@ -38,6 +38,10 @@ type RecipeData = {
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 export default function RecipeEditPage() {
+  useEffect(() => {
+    document.title = "レシピ編集 - Recipia";
+  }, []);
+
   const params = useParams();
   const router = useRouter();
   const supabase = createClient();

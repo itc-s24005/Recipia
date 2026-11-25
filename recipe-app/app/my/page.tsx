@@ -2,6 +2,11 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import MyPageContent from "./MyPageContent";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "マイページ - Recipia",
+};
 
 export default function MyPage() {
   return (

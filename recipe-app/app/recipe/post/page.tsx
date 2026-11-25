@@ -22,6 +22,10 @@ type Allergen = {
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 export default function RecipePostPage() {
+  useEffect(() => {
+    document.title = "レシピ投稿 - Recipia";
+  }, []);
+
   const router = useRouter();
   const supabase = createClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
