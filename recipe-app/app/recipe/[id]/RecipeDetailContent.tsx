@@ -249,6 +249,7 @@ const reviewProfileMap = new Map(
             <div>
               <UserProfileLink
                 userId={profile.id}
+                isCurrentUser={user?.id === profile.id}
                 className="mt-6 flex items-center gap-3 border-y border-gray-100 py-10"
               >
                 <div className="h-11 w-11 overflow-hidden rounded-full bg-gray-100">
