@@ -160,7 +160,7 @@ const handleLoadMore = async () => {
 }
 
   return (
-    <main className="min-h-screen bg-[#f8f8f5] pt-36 text-gray-800">
+    <main className="min-h-screen bg-[#f8f8f5] pt-26 text-gray-800">
 
       <div className="mx-auto max-w-6xl px-6 py-8">
 

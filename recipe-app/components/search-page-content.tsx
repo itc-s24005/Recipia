@@ -297,7 +297,7 @@ if (searchAllergens.length > 0) {
 
 
       {/* メイン */}
-      <main className="mx-auto max-w-5xl px-4 pt-46 pb-7">
+      <main className="mx-auto max-w-5xl px-4 pt-26 pb-7">
 
 
         {/* 検索結果件数 */}
