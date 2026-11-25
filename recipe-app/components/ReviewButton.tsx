@@ -179,7 +179,7 @@ if (existingReview) {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="rounded-lg bg-orange-300 px-6 py-3 font-semibold text-white transition hover:bg-orange-400"
+        className="rounded-lg bg-[#669D53] px-6 py-3 font-semibold text-white transition hover:bg-[#568745]"
       >
         レビューを書く
       </button>
@@ -251,7 +251,7 @@ if (existingReview) {
                 type="button"
                 onClick={handleSubmit}
                 disabled={loading}
-                className="flex-1 rounded-lg bg-orange-300 py-3 font-semibold text-white hover:bg-orange-400 disabled:opacity-50"
+                className="flex-1 rounded-lg bg-[#669D53] py-3 font-semibold text-white hover:bg-[#568745] disabled:opacity-50"
               >
                 {loading ? '投稿中...' : '投稿'}
               </button>
@@ -260,7 +260,7 @@ if (existingReview) {
                 type="button"
                 onClick={handleClose}
                 disabled={loading}
-                className="flex-1 rounded-lg bg-orange-300 py-3 font-semibold text-white hover:bg-orange-400 disabled:opacity-50"
+                className="flex-1 rounded-lg bg-[#669D53] py-3 font-semibold text-white hover:bg-[#568745] disabled:opacity-50"
               >
                 キャンセル
               </button>
