@@ -816,10 +816,11 @@ export default function RecipeEditClient({
 }
 
 const styles: Record<string, React.CSSProperties> = {
+
   page: {
     minHeight: "100vh",
     background: "#f7f7f7",
-    padding: "48px 16px",
+    padding: "104px 16px 40px",
     color: "#222",
   },
   container: {
