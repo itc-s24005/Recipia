@@ -1,10 +1,13 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
+  useEffect(() => {
+    document.title = "ログイン - Recipia";
+  }, []);
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 

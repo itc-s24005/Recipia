@@ -1,12 +1,33 @@
 
 import { Suspense } from "react";
 import { connection } from "next/server";
+import type { Metadata } from "next";
+import { createClient } from "@/lib/supabase/server";
 import UserPageContent from "./UserPageContent";
 
 type Props = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ visit?: string }>;
 };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  await connection();
+
+  const { id } = await params;
+  const supabase = await createClient();
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("name")
+    .eq("id", id)
+    .single();
+
+  const userName = profile?.name ?? "ユーザー";
+
+  return {
+    title: `${userName}さんのユーザーページ - Recipia`,
+  };
+}
 
 export default function UserPage({ params, searchParams }: Props) {
   return (

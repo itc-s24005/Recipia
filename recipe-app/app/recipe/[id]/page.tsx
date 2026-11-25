@@ -2,10 +2,31 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import RecipeDetailContent from "./RecipeDetailContent";
+import type { Metadata } from "next";
+import { createClient } from "@/lib/supabase/server";
 
 type Props = {
   params: Promise<{ id: string }>;
 };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  await connection();
+
+  const { id } = await params;
+  const supabase = await createClient();
+
+  const { data: recipe } = await supabase
+    .from("recipes")
+    .select("title")
+    .eq("id", id)
+    .single();
+
+  const Title = recipe?.title ?? "レシピ詳細";
+
+  return {
+    title: `${Title} - Recipia`,
+  };
+}
 
 export default function RecipeDetailPage({ params }: Props) {
   return (
