@@ -210,10 +210,6 @@ export default function UserRecipeList({
         }
       }
 
-      window.alert("レシピを削除しました。");
-    } catch (err) {
-      console.error(err);
-
       setError(
         "削除に失敗しました。もう一度お試しください。"
       );
