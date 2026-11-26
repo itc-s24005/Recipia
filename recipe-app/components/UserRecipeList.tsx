@@ -210,10 +210,6 @@ export default function UserRecipeList({
         }
       }
 
-      setError(
-        "削除に失敗しました。もう一度お試しください。"
-      );
-
       setRecipeToDelete(null);
     } finally {
       setDeleting(false);

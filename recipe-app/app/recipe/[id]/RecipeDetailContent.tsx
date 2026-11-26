@@ -2,11 +2,10 @@
 import { notFound } from "next/navigation";
 import UserProfileLink from "@/components/UserProfileLink";
 import { createClient } from "@/lib/supabase/server";
-import LikeButton from '@/components/LikeButton'
-import FollowButton from '@/components/FollowButton'
-import FavoriteButton from '@/components/FavoriteButton'
-import ReviewButton from '@/components/ReviewButton'
-
+import LikeButton from "@/components/LikeButton";
+import FollowButton from "@/components/FollowButton";
+import FavoriteButton from "@/components/FavoriteButton";
+import ReviewButton from "@/components/ReviewButton";
 
 type RecipeRow = {
   id: number;
@@ -36,6 +35,7 @@ type StepRow = {
   id: number;
   step_number: number;
   instruction: string;
+  image_url: string | null;
 };
 
 type RecipeAllergenRow = {
@@ -48,18 +48,17 @@ type AllergenRow = {
 };
 
 type ReviewRow = {
-  user_id: string
-  comment: string
-  image_url: string | null
-  created_at: string
-}
+  user_id: string;
+  comment: string;
+  image_url: string | null;
+  created_at: string;
+};
 
 type ReviewProfileRow = {
-  id: string
-  name: string
-  avatar_url: string | null
-}
-
+  id: string;
+  name: string;
+  avatar_url: string | null;
+};
 
 export default async function RecipeDetailContent({
   id,
@@ -73,11 +72,13 @@ export default async function RecipeDetailContent({
   }
 
   const supabase = await createClient();
+
   // ログインユーザーを取得
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // レシピ情報を取得
   const { data: recipeData, error: recipeError } = await supabase
     .from("recipes")
     .select(
@@ -97,6 +98,7 @@ export default async function RecipeDetailContent({
 
   const recipe = recipeData as RecipeRow;
 
+  // 関連情報をまとめて取得
   const [
     { data: profileData, error: profileError },
     { data: ingredientData, error: ingredientError },
@@ -115,9 +117,10 @@ export default async function RecipeDetailContent({
       .eq("recipe_id", recipeId)
       .order("sort_order", { ascending: true }),
 
+    // 手順画像のURLも取得する
     supabase
       .from("recipe_steps")
-      .select("id, step_number, instruction")
+      .select("id, step_number, instruction, image_url")
       .eq("recipe_id", recipeId)
       .order("step_number", { ascending: true }),
 
@@ -134,6 +137,7 @@ export default async function RecipeDetailContent({
       stepError,
       relationError
     );
+
     throw new Error("レシピ詳細情報の取得に失敗しました。");
   }
 
@@ -142,6 +146,7 @@ export default async function RecipeDetailContent({
   const steps = (stepData ?? []) as StepRow[];
   const relations = (relationData ?? []) as RecipeAllergenRow[];
 
+  // 対応アレルギー食品を取得
   const allergenIds = relations.map((item) => item.allergen_id);
   let allergens: string[] = [];
 
@@ -161,51 +166,53 @@ export default async function RecipeDetailContent({
       (item) => item.name
     );
   }
+
   // レビュー一覧を取得（新しい順）
-const { data: reviewData, error: reviewError } = await supabase
-  .from('reviews')
-  .select('user_id, comment, image_url, created_at')
-  .eq('recipe_id', recipeId)
-  .order('created_at', { ascending: false })
+  const { data: reviewData, error: reviewError } = await supabase
+    .from("reviews")
+    .select("user_id, comment, image_url, created_at")
+    .eq("recipe_id", recipeId)
+    .order("created_at", { ascending: false });
 
-if (reviewError) {
-  console.error(reviewError)
-  throw new Error('レビューの取得に失敗しました。')
-}
-
-const reviews = (reviewData ?? []) as ReviewRow[]
-
-// レビュー投稿者のIDを取得
-const reviewerIds = [
-  ...new Set(reviews.map((review) => review.user_id)),
-]
-
-// 投稿者のプロフィールを取得
-let reviewProfiles: ReviewProfileRow[] = []
-
-if (reviewerIds.length > 0) {
-  const { data: reviewProfileData, error: reviewProfileError } =
-    await supabase
-      .from('profiles')
-      .select('id, name, avatar_url')
-      .in('id', reviewerIds)
-
-  if (reviewProfileError) {
-    console.error(reviewProfileError)
-    throw new Error('レビュー投稿者の取得に失敗しました。')
+  if (reviewError) {
+    console.error(reviewError);
+    throw new Error("レビューの取得に失敗しました。");
   }
 
-  reviewProfiles = (reviewProfileData ?? []) as ReviewProfileRow[]
-}
+  const reviews = (reviewData ?? []) as ReviewRow[];
 
-// ユーザーIDからプロフィールを探せるようにする
-const reviewProfileMap = new Map(
-  reviewProfiles.map((profile) => [profile.id, profile])
-)
+  // レビュー投稿者のIDを取得
+  const reviewerIds = [
+    ...new Set(reviews.map((review) => review.user_id)),
+  ];
+
+  // 投稿者のプロフィールを取得
+  let reviewProfiles: ReviewProfileRow[] = [];
+
+  if (reviewerIds.length > 0) {
+    const { data: reviewProfileData, error: reviewProfileError } =
+      await supabase
+        .from("profiles")
+        .select("id, name, avatar_url")
+        .in("id", reviewerIds);
+
+    if (reviewProfileError) {
+      console.error(reviewProfileError);
+      throw new Error("レビュー投稿者の取得に失敗しました。");
+    }
+
+    reviewProfiles = (reviewProfileData ?? []) as ReviewProfileRow[];
+  }
+
+  // ユーザーIDからプロフィールを探せるようにする
+  const reviewProfileMap = new Map(
+    reviewProfiles.map((profile) => [profile.id, profile])
+  );
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 pt-26 pb-10">
       <article className="mx-auto max-w-3xl overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+        {/* レシピ画像 */}
         <div className="aspect-[16/9] bg-gray-100">
           {recipe.image_url ? (
             <img
@@ -221,30 +228,31 @@ const reviewProfileMap = new Map(
         </div>
 
         <div className="p-6 sm:p-8">
-            {/* タイトルといいね・お気に入り */}
-            <div className="flex items-center justify-between gap-3">
-              <h1 className="text-2xl font-bold leading-relaxed text-gray-800 sm:text-3xl">
-                {recipe.title}
-              </h1>
+          {/* タイトルといいね・お気に入り */}
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-2xl font-bold leading-relaxed text-gray-800 sm:text-3xl">
+              {recipe.title}
+            </h1>
 
-          {/* いいね・お気に入り */}
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <LikeButton
                 recipeId={recipe.id}
                 recipeUserId={recipe.user_id}
               />
+
               <FavoriteButton
                 recipeId={recipe.id}
                 recipeUserId={recipe.user_id}
               />
             </div>
-
           </div>
 
+          {/* 説明文 */}
           <p className="mt-4 whitespace-pre-wrap break-words leading-7 text-gray-600">
             {recipe.description}
           </p>
 
+          {/* 投稿者情報 */}
           {profile && (
             <div>
               <UserProfileLink
@@ -255,25 +263,28 @@ const reviewProfileMap = new Map(
                 <div className="h-11 w-11 overflow-hidden rounded-full bg-gray-100">
                   {profile.avatar_url ? (
                     <img
-                    src={profile.avatar_url}
-                    alt={profile.name}
-                    className="h-full w-full object-cover"
+                      src={profile.avatar_url}
+                      alt={profile.name}
+                      className="h-full w-full object-cover"
                     />
                   ) : (
-                  <div className="flex h-full w-full items-center justify-center font-bold text-gray-400">
-                    {profile.name.charAt(0)}
+                    <div className="flex h-full w-full items-center justify-center font-bold text-gray-400">
+                      {profile.name.charAt(0)}
                     </div>
                   )}
-                  </div>
-                  <p className="font-semibold text-gray-800">
-                    {profile.name}
-                  </p>
+                </div>
+
+                <p className="font-semibold text-gray-800">
+                  {profile.name}
+                </p>
               </UserProfileLink>
+
               {/* フォローボタン */}
               <FollowButton targetUserId={profile.id} />
-              </div>
-            )}
+            </div>
+          )}
 
+          {/* 調理時間・人数 */}
           <div className="mt-6 flex flex-wrap gap-6 text-sm text-gray-600">
             {recipe.cooking_time !== null && (
               <p>
@@ -290,6 +301,7 @@ const reviewProfileMap = new Map(
             )}
           </div>
 
+          {/* 対応アレルギー食品 */}
           <section className="mt-10">
             <h2 className="border-b-2 border-green-500 pb-3 text-xl font-bold text-gray-800">
               対応アレルギー食品
@@ -313,6 +325,7 @@ const reviewProfileMap = new Map(
             )}
           </section>
 
+          {/* 材料 */}
           <section className="mt-10">
             <h2 className="border-b-2 border-green-500 pb-3 text-xl font-bold text-gray-800">
               材料
@@ -328,6 +341,7 @@ const reviewProfileMap = new Map(
                     <span className="font-medium text-gray-700">
                       {ingredient.name}
                     </span>
+
                     <span className="text-gray-500">
                       {ingredient.amount}
                     </span>
@@ -341,22 +355,38 @@ const reviewProfileMap = new Map(
             )}
           </section>
 
+          {/* 作り方 */}
           <section className="mt-10">
             <h2 className="border-b-2 border-green-500 pb-3 text-xl font-bold text-gray-800">
               作り方
             </h2>
 
             {steps.length > 0 ? (
-              <ol className="mt-5 space-y-5">
+              <ol className="mt-5 space-y-6">
                 {steps.map((step) => (
                   <li key={step.id} className="flex gap-4">
+                    {/* STEP番号 */}
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-100 text-sm font-bold text-green-700">
                       {step.step_number}
                     </span>
 
-                    <p className="flex-1 whitespace-pre-wrap break-words pt-1 leading-7 text-gray-700">
-                      {step.instruction}
-                    </p>
+                    <div className="min-w-0 flex-1">
+                      {/* 手順の説明 */}
+                      <p className="whitespace-pre-wrap break-words pt-1 leading-7 text-gray-700">
+                        {step.instruction}
+                      </p>
+
+                      {/* 手順画像（登録されている場合のみ表示） */}
+                      {step.image_url && (
+                        <div className="mt-3">
+                          <img
+                            src={step.image_url}
+                            alt={`STEP ${step.step_number} の手順画像`}
+                            className="max-h-96 w-auto max-w-full rounded-lg border border-gray-200 object-contain"
+                          />
+                        </div>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ol>
@@ -366,87 +396,87 @@ const reviewProfileMap = new Map(
               </p>
             )}
           </section>
-
         </div>
       </article>
 
-    {/* レビューを書くボタン */}
-    {user && user.id !== recipe.user_id && (
-      <div className="mx-auto mt-6 max-w-3xl text-center">
-        <ReviewButton
-        recipeId={recipe.id}
-        recipeUserId={recipe.user_id}
-        />
-      </div>
-    )}
-
-    {/* レビュー一覧 */}
-    <section className="mx-auto mt-10 max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-      <h2 className="border-b-2 border-green-500 pb-3 text-xl font-bold text-gray-800">
-        レビュー（{reviews.length}件）
-      </h2>
-
-      {reviews.length > 0 ? (
-        <div className="divide-y divide-gray-100">
-          {reviews.map((review) => {
-            const reviewer = reviewProfileMap.get(review.user_id)
-
-            return (
-              <div
-                key={`${review.user_id}-${review.created_at}`}
-                className="py-6"
-              >
-                {/* 投稿者情報 */}
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gray-100">
-                    {reviewer?.avatar_url ? (
-                      <img
-                        src={reviewer.avatar_url}
-                        alt={reviewer.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center font-bold text-gray-400">
-                        {reviewer?.name?.charAt(0) ?? '?'}
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <p className="font-semibold text-gray-800">
-                      {reviewer?.name ?? 'ユーザー'}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {new Date(review.created_at).toLocaleDateString('ja-JP')}
-                    </p>
-                  </div>
-                </div>
-
-                {/* レビュー本文 */}
-                <p className="mt-4 whitespace-pre-wrap break-words leading-7 text-gray-700">
-                  {review.comment}
-                </p>
-
-                {/* レビュー写真 */}
-                {review.image_url && (
-                  <div className="mt-4">
-                    <img
-                      src={review.image_url}
-                      alt="レビュー投稿写真"
-                      className="max-h-80 w-auto max-w-full rounded-lg object-contain"
-                    />
-                  </div>
-                )}
-              </div>
-            )
-          })}
+      {/* レビューを書くボタン */}
+      {user && user.id !== recipe.user_id && (
+        <div className="mx-auto mt-6 max-w-3xl text-center">
+          <ReviewButton
+            recipeId={recipe.id}
+            recipeUserId={recipe.user_id}
+          />
         </div>
-      ) : (
-        <p className="py-10 text-center text-gray-400">
-          まだレビューはありません。最初のレビューを書いてみましょう
-        </p>
       )}
-    </section>
-  </main>
+
+      {/* レビュー一覧 */}
+      <section className="mx-auto mt-10 max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+        <h2 className="border-b-2 border-green-500 pb-3 text-xl font-bold text-gray-800">
+          レビュー（{reviews.length}件）
+        </h2>
+
+        {reviews.length > 0 ? (
+          <div className="divide-y divide-gray-100">
+            {reviews.map((review) => {
+              const reviewer = reviewProfileMap.get(review.user_id);
+
+              return (
+                <div
+                  key={`${review.user_id}-${review.created_at}`}
+                  className="py-6"
+                >
+                  {/* 投稿者情報 */}
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gray-100">
+                      {reviewer?.avatar_url ? (
+                        <img
+                          src={reviewer.avatar_url}
+                          alt={reviewer.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center font-bold text-gray-400">
+                          {reviewer?.name?.charAt(0) ?? "?"}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="font-semibold text-gray-800">
+                        {reviewer?.name ?? "ユーザー"}
+                      </p>
+
+                      <p className="text-xs text-gray-400">
+                        {new Date(review.created_at).toLocaleDateString("ja-JP")}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* レビュー本文 */}
+                  <p className="mt-4 whitespace-pre-wrap break-words leading-7 text-gray-700">
+                    {review.comment}
+                  </p>
+
+                  {/* レビュー写真 */}
+                  {review.image_url && (
+                    <div className="mt-4">
+                      <img
+                        src={review.image_url}
+                        alt="レビュー投稿写真"
+                        className="max-h-80 w-auto max-w-full rounded-lg object-contain"
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="py-10 text-center text-gray-400">
+            まだレビューはありません。最初のレビューを書いてみましょう
+          </p>
+        )}
+      </section>
+    </main>
   );
 }
