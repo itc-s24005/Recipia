@@ -22,6 +22,7 @@ export default function ReviewButton({
   const [image, setImage] = useState<File | null>(null)
   const [preview, setPreview] = useState('')
   const [loading, setLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
 
   // 写真選択
   const handleImageChange = (
@@ -51,16 +52,24 @@ export default function ReviewButton({
     setComment('')
     setImage(null)
     setPreview('')
+    setErrorMessage('')
   }
 
   // レビュー投稿
   const handleSubmit = async () => {
-    if (!comment.trim()) {
-      alert('レビューを入力してください。')
-      return
-    }
+  setErrorMessage('')
 
-    setLoading(true)
+  if (!image) {
+    setErrorMessage('写真をアップロードしてください。')
+    return
+  }
+
+  if (!comment.trim()) {
+    setErrorMessage('レビューを入力してください。')
+    return
+  }
+
+  setLoading(true)
 
     try {
       // ログインユーザーを取得
@@ -69,14 +78,15 @@ export default function ReviewButton({
         error: userError,
       } = await supabase.auth.getUser()
 
+      // ログインしていない場合
       if (userError || !user) {
-        alert('レビューを投稿するにはログインしてください。')
+        setErrorMessage('レビューを投稿するにはログインしてください。')
         return
       }
 
-      // 自分が投稿したレシピにはレビューできない
+      /// 自分のレシピの場合
       if (user.id === recipeUserId) {
-        alert('自分が投稿したレシピにはレビューできません。')
+        setErrorMessage('自分が投稿したレシピにはレビューできません。')
         return
       }
 
@@ -88,14 +98,16 @@ const { data: existingReview, error: checkError } = await supabase
   .eq('recipe_id', recipeId)
   .maybeSingle()
 
+// レビュー確認に失敗した場合
 if (checkError) {
   console.error(checkError)
-  alert('レビューの確認に失敗しました。')
+  setErrorMessage('レビューの確認に失敗しました。')
   return
 }
 
+// すでにレビュー済みの場合
 if (existingReview) {
-  alert('このレシピには、すでにレビューを投稿しています。')
+  setErrorMessage('このレシピには、すでにレビューを投稿しています。')
   return
 }
 
@@ -117,7 +129,7 @@ if (existingReview) {
 
         if (uploadError) {
           console.error(uploadError)
-          alert('写真のアップロードに失敗しました。')
+          setErrorMessage('写真のアップロードに失敗しました。')
           return
         }
 
@@ -137,38 +149,32 @@ if (existingReview) {
           comment: comment.trim(),
           image_url: imageUrl,
         })
+      // エラー内容を確認
+        if (insertError) {
+          console.warn('レビュー保存エラー:', {
+            message: insertError.message,
+            details: insertError.details,
+            hint: insertError.hint,
+            code: insertError.code,
+          })
 
-      if (insertError) {
-  // エラー内容を確認
-  console.warn('レビュー保存エラー:', {
-    message: insertError.message,
-    details: insertError.details,
-    hint: insertError.hint,
-    code: insertError.code,
-  })
-
-  // DB保存に失敗した場合、アップロードした写真を削除
+  // アップロード済みの写真を削除
   if (imagePath) {
     await supabase.storage
       .from('review-images')
       .remove([imagePath])
   }
 
-  alert(
-    `レビューの投稿に失敗しました。\n\n` +
-    `エラー内容：${insertError.message}\n` +
-    `詳細：${insertError.details ?? 'なし'}`
-  )
+  setErrorMessage('レビューの投稿に失敗しました。')
 
   return
 }
 
-      alert('レビューを投稿しました！')
       handleClose()
       router.refresh()
     } catch (error) {
       console.error(error)
-      alert('エラーが発生しました。')
+      setErrorMessage('エラーが発生しました。もう一度お試しください。')
     } finally {
       setLoading(false)
     }
@@ -244,6 +250,21 @@ if (existingReview) {
             <p className="mt-1 text-right text-xs text-gray-400">
               {comment.length}/1000文字
             </p>
+
+            {/* エラー表示 */}
+            {errorMessage && (
+              <div
+              role="alert"
+              className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600"
+              >
+                <p className="font-semibold">
+                  投稿できませんでした
+                  </p>
+                  <p className="mt-1 whitespace-pre-line">
+                    {errorMessage}
+                    </p>
+                    </div>
+                  )}
 
             {/* ボタン */}
             <div className="mt-5 flex gap-4">

@@ -18,6 +18,7 @@ type Recipe = {
     name: string
     avatar_url: string | null
   } | null
+  allergens: string[]
 }
 
 type Props = {
@@ -33,6 +34,60 @@ export default function HomePageContent({ userName, userId }: Props) {
   const [hasMore, setHasMore] = useState(true)
 
   const DISPLAY_COUNT = 6
+
+  // レシピごとの対応アレルギー食品を取得
+const addAllergensToRecipes = async (recipeList: Recipe[]) => {
+  if (recipeList.length === 0) return recipeList
+
+  const supabase = createClient()
+
+  const recipeIds = recipeList.map((recipe) => recipe.id)
+
+  const { data, error } = await supabase
+    .from('recipe_allergens')
+    .select(`
+      recipe_id,
+      allergens(name)
+    `)
+    .in('recipe_id', recipeIds)
+
+  if (error) {
+    console.error('アレルギー食品取得エラー:', error)
+
+    return recipeList.map((recipe) => ({
+      ...recipe,
+      allergens: [],
+    }))
+  }
+
+  type RecipeAllergenRow = {
+    recipe_id: number
+    allergens: {
+      name: string
+    } | null
+  }
+
+  const rows = (data ?? []) as unknown as RecipeAllergenRow[]
+
+  const allergenMap = new Map<number, string[]>()
+
+  rows.forEach((row) => {
+    if (!row.allergens) return
+
+    const current = allergenMap.get(row.recipe_id) ?? []
+
+    if (!current.includes(row.allergens.name)) {
+      current.push(row.allergens.name)
+    }
+
+    allergenMap.set(row.recipe_id, current)
+  })
+
+  return recipeList.map((recipe) => ({
+    ...recipe,
+    allergens: allergenMap.get(recipe.id) ?? [],
+  }))
+}
 
 
   // Supabaseからフォロー中ユーザーを取得
@@ -100,8 +155,11 @@ useEffect(() => {
     }
 
     const fetchedRecipes = (data ?? []) as unknown as Recipe[]
+    
+    const recipesWithAllergens =
+    await addAllergensToRecipes(fetchedRecipes)
 
-    setRecipes(fetchedRecipes.slice(0, DISPLAY_COUNT))
+    setRecipes(recipesWithAllergens.slice(0, DISPLAY_COUNT))
     setHasMore(fetchedRecipes.length > DISPLAY_COUNT)
     setIsRecipeLoading(false)
   }
@@ -147,12 +205,15 @@ const handleLoadMore = async () => {
 
     const newRecipes = (data ?? []) as unknown as Recipe[]
 
+    const recipesWithAllergens =
+    await addAllergensToRecipes(newRecipes)
+
     setRecipes((current) => [
       ...current,
-      ...newRecipes.slice(0, DISPLAY_COUNT),
-    ])
+    ...recipesWithAllergens.slice(0, DISPLAY_COUNT),
+  ])
 
-    setHasMore(newRecipes.length > DISPLAY_COUNT)
+  setHasMore(newRecipes.length > DISPLAY_COUNT)
 
   } finally {
     setIsRecipeLoading(false)
@@ -218,6 +279,28 @@ const handleLoadMore = async () => {
               <p className="font-bold">
                 {recipe.title}
               </p>
+              {/* 対応アレルギー食品 */}
+              <div className="mt-3">
+                <p className="mb-2 text-xs font-semibold text-gray-500">
+                  対応アレルギー食品
+                </p>
+              <div className="flex flex-wrap gap-2">
+                {recipe.allergens.length > 0 ? (
+                  recipe.allergens.map((allergen) => (
+                    <span
+                    key={`${recipe.id}-${allergen}`}
+                    className="rounded-full bg-green-50 px-3 py-1 text-xs text-green-700"
+                    >
+                      {allergen}
+                    </span>
+                    ))
+                  ) : (
+                  <span className="text-xs text-gray-400">
+                    登録なし
+                    </span>
+                  )}
+                </div>
+              </div>
 
               {/* 投稿者アイコンとユーザー名 */}
               <div className="mt-3 flex items-center gap-2">
