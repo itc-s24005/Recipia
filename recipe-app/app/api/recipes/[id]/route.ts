@@ -121,8 +121,15 @@ export async function POST(
 
     const { error: ownerError, userId } = await verifyRecipeOwner(id);
 
-    if (ownerError || !userId) {
+    if (ownerError) {
       return ownerError;
+    }
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: "ログインしてください。" },
+        { status: 401 }
+      );
     }
 
     const body = await request.json();
