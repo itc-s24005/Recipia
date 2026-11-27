@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -6,6 +7,7 @@ import {
   useState,
   type ChangeEvent,
   type FormEvent,
+  type CSSProperties,
 } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -17,6 +19,9 @@ type Ingredient = {
 
 type Step = {
   instruction: string;
+  originalImageUrl: string | null;
+  image: File | null;
+  previewUrl: string;
 };
 
 type Allergen = {
@@ -34,6 +39,12 @@ type RecipeData = {
   servings: number | null;
 };
 
+type StepData = {
+  instruction: string;
+  step_number: number;
+  image_url: string | null;
+};
+
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 type RecipeEditClientProps = {
@@ -43,13 +54,13 @@ type RecipeEditClientProps = {
 export default function RecipeEditClient({
   recipeId,
 }: RecipeEditClientProps) {
-  
   const router = useRouter();
   const supabase = createClient();
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // 編集開始時点で登録されていた手順画像URLを保持
+  const initialStepImageUrlsRef = useRef<string[]>([]);
 
-
-  const [userId, setUserId] = useState("");
   const [originalImageUrl, setOriginalImageUrl] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState("");
@@ -64,7 +75,12 @@ export default function RecipeEditClient({
   ]);
 
   const [steps, setSteps] = useState<Step[]>([
-    { instruction: "" },
+    {
+      instruction: "",
+      originalImageUrl: null,
+      image: null,
+      previewUrl: "",
+    },
   ]);
 
   const [allergens, setAllergens] = useState<Allergen[]>([]);
@@ -95,7 +111,6 @@ export default function RecipeEditClient({
         }
 
         if (cancelled) return;
-        setUserId(user.id);
 
         // 自分が投稿したレシピか確認
         const { data: recipeData, error: recipeError } = await supabase
@@ -128,9 +143,10 @@ export default function RecipeEditClient({
             .eq("recipe_id", Number(recipeId))
             .order("sort_order", { ascending: true }),
 
+          // image_urlも取得する
           supabase
             .from("recipe_steps")
-            .select("instruction, step_number")
+            .select("instruction, step_number, image_url")
             .eq("recipe_id", Number(recipeId))
             .order("step_number", { ascending: true }),
 
@@ -151,6 +167,13 @@ export default function RecipeEditClient({
           relationError ||
           allergenError
         ) {
+          console.error(
+            ingredientError,
+            stepError,
+            relationError,
+            allergenError
+          );
+
           throw new Error("レシピ情報の取得に失敗しました。");
         }
 
@@ -158,11 +181,13 @@ export default function RecipeEditClient({
 
         setTitle(recipe.title);
         setDescription(recipe.description);
+
         setCookingTime(
           recipe.cooking_time === null
             ? ""
             : String(recipe.cooking_time)
         );
+
         setServings(
           recipe.servings === null
             ? ""
@@ -180,21 +205,36 @@ export default function RecipeEditClient({
               }))
             : [{ name: "", amount: "" }]
         );
+        initialStepImageUrlsRef.current = (stepData ?? [])
+          .map((item) => (item as StepData).image_url)
+          .filter((url): url is string => typeof url === "string");
 
         setSteps(
           stepData && stepData.length > 0
-            ? stepData.map((item) => ({
+            ? (stepData as StepData[]).map((item) => ({
                 instruction: item.instruction,
+                originalImageUrl: item.image_url,
+                image: null,
+                previewUrl: item.image_url ?? "",
               }))
-            : [{ instruction: "" }]
+            : [
+                {
+                  instruction: "",
+                  originalImageUrl: null,
+                  image: null,
+                  previewUrl: "",
+                },
+              ]
         );
 
         setAllergens(allergenData ?? []);
+
         setSelectedAllergenIds(
           (relationData ?? []).map((item) => item.allergen_id)
         );
       } catch (err) {
         console.error("レシピ取得エラー:", err);
+
         if (!cancelled) {
           setError("レシピ情報を取得できませんでした。");
         }
@@ -210,9 +250,18 @@ export default function RecipeEditClient({
     return () => {
       cancelled = true;
     };
-  }, [recipeId]);
+  }, [recipeId, router, supabase]);
 
-  // 画像選択
+  // コンポーネント終了時にプレビューURLを解放
+  useEffect(() => {
+    return () => {
+      if (previewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  // レシピ画像選択
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
 
@@ -222,14 +271,20 @@ export default function RecipeEditClient({
       !["image/jpeg", "image/png"].includes(file.type) ||
       file.size > MAX_IMAGE_SIZE
     ) {
-      setError("5MB以下のJPEGまたはPNG画像を選んでください");
+      setError("5MB以下のJPEGまたはPNG画像を選んでください。");
       event.target.value = "";
       return;
     }
 
     setError("");
+
+    if (previewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
     setImage(file);
     setPreviewUrl(URL.createObjectURL(file));
+    event.target.value = "";
   };
 
   // 材料の更新
@@ -260,12 +315,76 @@ export default function RecipeEditClient({
     );
   };
 
-  // 手順の更新
+  // 手順の説明文を更新
   const updateStep = (index: number, value: string) => {
     setSteps((current) =>
       current.map((item, i) =>
-        i === index ? { instruction: value } : item
+        i === index ? { ...item, instruction: value } : item
       )
+    );
+  };
+
+  // 手順画像を選択
+  const handleStepImageChange = (
+    index: number,
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    if (
+      !["image/jpeg", "image/png"].includes(file.type) ||
+      file.size > MAX_IMAGE_SIZE
+    ) {
+      setError("手順画像は5MB以下のJPEGまたはPNG画像を選んでください。");
+      event.target.value = "";
+      return;
+    }
+
+    setError("");
+
+    const newPreviewUrl = URL.createObjectURL(file);
+
+    setSteps((current) =>
+      current.map((step, i) => {
+        if (i !== index) return step;
+
+        if (
+          step.previewUrl.startsWith("blob:") &&
+          step.previewUrl !== newPreviewUrl
+        ) {
+          URL.revokeObjectURL(step.previewUrl);
+        }
+
+        return {
+          ...step,
+          image: file,
+          previewUrl: newPreviewUrl,
+        };
+      })
+    );
+
+    event.target.value = "";
+  };
+
+  // 手順画像を削除
+  const removeStepImage = (index: number) => {
+    setSteps((current) =>
+      current.map((step, i) => {
+        if (i !== index) return step;
+
+        if (step.previewUrl.startsWith("blob:")) {
+          URL.revokeObjectURL(step.previewUrl);
+        }
+
+        return {
+          ...step,
+          image: null,
+          originalImageUrl: null,
+          previewUrl: "",
+        };
+      })
     );
   };
 
@@ -274,14 +393,25 @@ export default function RecipeEditClient({
 
     setSteps((current) => [
       ...current,
-      { instruction: "" },
+      {
+        instruction: "",
+        originalImageUrl: null,
+        image: null,
+        previewUrl: "",
+      },
     ]);
   };
 
   const removeStep = (index: number) => {
-    setSteps((current) =>
-      current.filter((_, i) => i !== index)
-    );
+    setSteps((current) => {
+      const target = current[index];
+
+      if (target?.previewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+
+      return current.filter((_, i) => i !== index);
+    });
   };
 
   // アレルゲン選択
@@ -295,10 +425,7 @@ export default function RecipeEditClient({
 
   // 入力チェック
   const validate = () => {
-    if (
-      title.trim().length < 1 ||
-      title.trim().length > 40
-    ) {
+    if (title.trim().length < 1 || title.trim().length > 40) {
       return "タイトルは1〜40文字で入力してください。";
     }
 
@@ -374,7 +501,9 @@ export default function RecipeEditClient({
   };
 
   // Storageの公開URLからファイルパスを取得
-  const getStoragePath = (imageUrl: string) => {
+  const getStoragePath = (imageUrl: string | null) => {
+    if (!imageUrl) return null;
+
     try {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
       if (!supabaseUrl) return null;
@@ -385,13 +514,44 @@ export default function RecipeEditClient({
       if (url.origin !== baseUrl.origin) return null;
 
       const prefix = "/storage/v1/object/public/recipe-images/";
+
       if (!url.pathname.startsWith(prefix)) return null;
 
       const encodedPath = url.pathname.slice(prefix.length);
+
       return encodedPath ? decodeURIComponent(encodedPath) : null;
     } catch {
       return null;
     }
+  };
+
+  // Storageに画像をアップロード
+  const uploadImage = async (file: File, userId: string) => {
+    const extension = file.type === "image/png" ? "png" : "jpg";
+    const fileName = `${crypto.randomUUID()}.${extension}`;
+    const path = `${userId}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("recipe-images")
+      .upload(path, file, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage
+      .from("recipe-images")
+      .getPublicUrl(path);
+
+    return {
+      path,
+      url: publicUrl,
+    };
   };
 
   // 編集処理
@@ -410,8 +570,8 @@ export default function RecipeEditClient({
     setError("");
     setLoading(true);
 
-    let uploadedPath = "";
-    let newImageUrl = originalImageUrl;
+    // 今回新しくアップロードした画像のパス
+    const uploadedPaths: string[] = [];
 
     try {
       const {
@@ -423,30 +583,17 @@ export default function RecipeEditClient({
         throw new Error("ログイン情報を取得できませんでした。");
       }
 
-      // 画像を変更した場合だけアップロード
+      // レシピ画像
+      let newImageUrl = originalImageUrl;
+
       if (image) {
-        const extension = image.type === "image/png" ? "png" : "jpg";
-        const fileName = `${crypto.randomUUID()}.${extension}`;
-        uploadedPath = `${user.id}/${fileName}`;
+        const uploaded = await uploadImage(image, user.id);
 
-        const { error: uploadError } = await supabase.storage
-          .from("recipe-images")
-          .upload(uploadedPath, image, {
-            contentType: image.type,
-            upsert: false,
-          });
-
-        if (uploadError) throw uploadError;
-
-        const {
-          data: { publicUrl },
-        } = supabase.storage
-          .from("recipe-images")
-          .getPublicUrl(uploadedPath);
-
-        newImageUrl = publicUrl;
+        uploadedPaths.push(uploaded.path);
+        newImageUrl = uploaded.url;
       }
 
+      // 材料
       const validIngredients = ingredients
         .filter(
           (item) =>
@@ -457,11 +604,26 @@ export default function RecipeEditClient({
           amount: item.amount.trim(),
         }));
 
-      const validSteps = steps
-        .filter((item) => item.instruction.trim() !== "")
-        .map((item) => ({
-          instruction: item.instruction.trim(),
-        }));
+      // 手順画像をアップロードし、RPCに渡すデータを作成
+      const validSteps = [];
+
+      for (const step of steps) {
+        if (step.instruction.trim() === "") continue;
+
+        let stepImageUrl = step.originalImageUrl;
+
+        if (step.image) {
+          const uploaded = await uploadImage(step.image, user.id);
+
+          uploadedPaths.push(uploaded.path);
+          stepImageUrl = uploaded.url;
+        }
+
+        validSteps.push({
+          instruction: step.instruction.trim(),
+          image_url: stepImageUrl,
+        });
+      }
 
       // RPCでレシピと関連データを一括更新
       const { error: updateError } = await supabase.rpc(
@@ -483,18 +645,51 @@ export default function RecipeEditClient({
 
       if (updateError) throw updateError;
 
-      // DB更新成功後、画像を変更していた場合は古い画像を削除
-      if (image && originalImageUrl) {
-        const oldImagePath = getStoragePath(originalImageUrl);
+      // DB更新成功後、不要になった古い画像を削除
+      const retainedStepImageUrls = new Set(
+        validSteps
+          .map((step) => step.image_url)
+          .filter((url): url is string => typeof url === "string")
+      );
 
-        if (oldImagePath) {
-          const { error: deleteError } = await supabase.storage
-            .from("recipe-images")
-            .remove([oldImagePath]);
+      // 編集開始時点で存在していた画像と、更新後に残っている画像を比較
+      const oldStepImageUrls = initialStepImageUrlsRef.current.filter(
+        (url) => !retainedStepImageUrls.has(url)
+      );
 
-          if (deleteError) {
-            console.error("古い画像の削除に失敗しました:", deleteError);
-          }
+      // 削除対象の画像パスを作成
+      const oldImagePaths = [
+        ...(image && originalImageUrl
+          ? [getStoragePath(originalImageUrl)]
+          : []),
+        ...oldStepImageUrls.map((url) => getStoragePath(url)),
+      ].filter((path): path is string => path !== null);
+
+      // サーバー側APIを通して画像を削除
+      const uniqueOldImagePaths = [...new Set(oldImagePaths)];
+
+      if (uniqueOldImagePaths.length > 0) {
+        const response = await fetch(`/api/recipes/${recipeId}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            paths: uniqueOldImagePaths,
+          }),
+        });
+
+        if (!response.ok) {
+          const result = await response.json().catch(() => null);
+
+          console.error(
+            "古い画像の削除に失敗しました:",
+            result?.error ?? response.statusText
+          );
+
+          alert(
+            "レシピは更新されましたが、一部の古い画像をStorageから削除できませんでした。"
+          );
         }
       }
 
@@ -502,19 +697,25 @@ export default function RecipeEditClient({
     } catch (err) {
       console.error("レシピ更新エラー:", err);
 
-      // 更新失敗時、新しくアップロードした画像を削除
-      if (uploadedPath) {
-        const { error: deleteError } = await supabase.storage
-          .from("recipe-images")
-          .remove([uploadedPath]);
+      // 更新失敗時は今回アップロードした画像だけ削除する
+      if (uploadedPaths.length > 0) {
+      const response = await fetch(`/api/recipes/${recipeId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          paths: uploadedPaths,
+        }),
+      });
 
-        if (deleteError) {
-          console.error("新しい画像の削除エラー:", deleteError);
-        }
+      if (!response.ok) {
+        console.error("新しくアップロードした画像の削除に失敗しました。");
       }
+    }
 
-      setError("更新に失敗しました。もう一度お試しください");
-      alert("更新に失敗しました。もう一度お試しください");
+      setError("更新に失敗しました。もう一度お試しください。");
+      alert("更新に失敗しました。もう一度お試しください。");
       setLoading(false);
     }
   };
@@ -552,7 +753,7 @@ export default function RecipeEditClient({
         <h1 style={styles.heading}>レシピ編集</h1>
 
         <form onSubmit={handleSubmit} style={styles.form}>
-          {/* 画像 */}
+          {/* レシピ画像 */}
           <section style={styles.section}>
             <h2 style={styles.sectionTitle}>
               レシピ画像
@@ -595,6 +796,7 @@ export default function RecipeEditClient({
             <h2 style={styles.sectionTitle}>
               レシピ名 <span style={styles.required}>必須</span>
             </h2>
+
             <input
               type="text"
               value={title}
@@ -603,6 +805,7 @@ export default function RecipeEditClient({
               placeholder="例：簡単ふわふわオムライス"
               style={styles.input}
             />
+
             <small style={styles.counter}>
               {title.length}/40文字
             </small>
@@ -613,6 +816,7 @@ export default function RecipeEditClient({
             <h2 style={styles.sectionTitle}>
               説明文 <span style={styles.required}>必須</span>
             </h2>
+
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -621,6 +825,7 @@ export default function RecipeEditClient({
               placeholder="レシピの特徴やおすすめポイントを入力してください。"
               style={styles.textarea}
             />
+
             <small style={styles.counter}>
               {description.length}/150文字
             </small>
@@ -680,6 +885,7 @@ export default function RecipeEditClient({
                   placeholder="例：卵"
                   style={styles.input}
                 />
+
                 <input
                   value={item.amount}
                   onChange={(e) =>
@@ -689,10 +895,11 @@ export default function RecipeEditClient({
                   placeholder="例：2個"
                   style={styles.input}
                 />
+
                 <button
                   type="button"
                   onClick={() => removeIngredient(index)}
-                  disabled={ingredients.length === 1}
+                  disabled={ingredients.length === 1 || loading}
                   style={styles.removeButton}
                 >
                   削除
@@ -703,7 +910,7 @@ export default function RecipeEditClient({
             <button
               type="button"
               onClick={addIngredient}
-              disabled={ingredients.length >= 30}
+              disabled={ingredients.length >= 30 || loading}
               style={styles.addButton}
             >
               ＋ 材料を追加
@@ -720,16 +927,18 @@ export default function RecipeEditClient({
               <div key={index} style={styles.stepItem}>
                 <div style={styles.stepHeader}>
                   <strong>STEP {index + 1}</strong>
+
                   <button
                     type="button"
                     onClick={() => removeStep(index)}
-                    disabled={steps.length === 1}
+                    disabled={steps.length === 1 || loading}
                     style={styles.removeButton}
                   >
                     削除
                   </button>
                 </div>
 
+                {/* 手順の説明 */}
                 <textarea
                   value={step.instruction}
                   onChange={(e) => updateStep(index, e.target.value)}
@@ -738,16 +947,75 @@ export default function RecipeEditClient({
                   placeholder="作り方を入力してください。"
                   style={styles.textarea}
                 />
+
                 <small style={styles.counter}>
                   {step.instruction.length}/150文字
                 </small>
+
+                {/* 手順画像 */}
+                <div style={styles.stepImageSection}>
+                  <span style={styles.stepImageLabel}>
+                    手順画像（任意）
+                  </span>
+
+                  {step.previewUrl ? (
+                    <div style={styles.stepImagePreviewArea}>
+                      <img
+                        src={step.previewUrl}
+                        alt={`STEP ${index + 1} の画像プレビュー`}
+                        style={styles.stepImagePreview}
+                      />
+
+                      <div style={styles.stepImageActions}>
+                        <label style={styles.imageSelectButton}>
+                          画像を変更
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png"
+                            onChange={(e) =>
+                              handleStepImageChange(index, e)
+                            }
+                            disabled={loading}
+                            style={{ display: "none" }}
+                          />
+                        </label>
+
+                        <button
+                          type="button"
+                          onClick={() => removeStepImage(index)}
+                          disabled={loading}
+                          style={styles.removeImageButton}
+                        >
+                          画像を削除
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label style={styles.imageSelectButton}>
+                      ＋ 手順画像を選択
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png"
+                        onChange={(e) =>
+                          handleStepImageChange(index, e)
+                        }
+                        disabled={loading}
+                        style={{ display: "none" }}
+                      />
+                    </label>
+                  )}
+
+                  <small style={styles.imageHelp}>
+                    JPEG / PNG・5MB以下。画像を設定しなくても保存できます。
+                  </small>
+                </div>
               </div>
             ))}
 
             <button
               type="button"
               onClick={addStep}
-              disabled={steps.length >= 20}
+              disabled={steps.length >= 20 || loading}
               style={styles.addButton}
             >
               ＋ 手順を追加
@@ -757,6 +1025,7 @@ export default function RecipeEditClient({
           {/* アレルゲン */}
           <section style={styles.section}>
             <h2 style={styles.sectionTitle}>アレルゲン</h2>
+
             <p style={styles.descriptionText}>
               このレシピで使用していないアレルゲンを選択してください。
             </p>
@@ -774,6 +1043,7 @@ export default function RecipeEditClient({
                       type="checkbox"
                       checked={selectedAllergenIds.includes(allergen.id)}
                       onChange={() => toggleAllergen(allergen.id)}
+                      disabled={loading}
                     />
                     {allergen.name}
                   </label>
@@ -815,12 +1085,11 @@ export default function RecipeEditClient({
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-
+const styles: Record<string, CSSProperties> = {
   page: {
     minHeight: "100vh",
     background: "#f7f7f7",
-    padding: "104px 16px 40px",
+    padding: "48px 16px",
     color: "#222",
   },
   container: {
@@ -966,6 +1235,62 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  stepImageSection: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    marginTop: 8,
+  },
+  stepImageLabel: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: "#555",
+  },
+  stepImagePreviewArea: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    alignItems: "flex-start",
+  },
+  stepImagePreview: {
+    maxWidth: "100%",
+    maxHeight: 220,
+    objectFit: "contain",
+    borderRadius: 8,
+    border: "1px solid #ddd",
+    background: "#fff",
+  },
+  stepImageActions: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  imageSelectButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "flex-start",
+    padding: "9px 14px",
+    border: "1px solid #ccc",
+    borderRadius: 7,
+    background: "#fff",
+    color: "#333",
+    cursor: "pointer",
+    fontSize: 13,
+  },
+  removeImageButton: {
+    padding: "9px 14px",
+    border: "1px solid #e0baba",
+    borderRadius: 7,
+    background: "#fff",
+    color: "#b44",
+    cursor: "pointer",
+    fontSize: 13,
+  },
+  imageHelp: {
+    color: "#999",
+    fontSize: 12,
   },
   descriptionText: {
     color: "#777",
